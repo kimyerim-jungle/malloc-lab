@@ -213,7 +213,7 @@ static void *coalesce(void *bp)
 
 static void *find_fit(size_t asize) // first fit
 {
-    void *bp = heap_listp;
+    void *bp;
 
     for (bp = heap_listp; bp != NULL; bp = GET_SUCC(bp)){
         if (GET_SIZE(HDRP(bp)) >= asize)
@@ -228,7 +228,6 @@ static void place(void *bp, size_t asize)
     remove_free_block(bp);
     size_t csize = GET_SIZE(HDRP(bp));
     
-
     if ((csize - asize) >= (2*DSIZE)) {
         PUT(HDRP(bp), PACK(asize, 1));
         PUT(FTRP(bp), PACK(asize, 1));
