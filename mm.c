@@ -74,6 +74,7 @@ static void *extend_heap(size_t words);
 static void *coalesce(void *bp);
 static void place(void *bp, size_t asize);
 static void *find_fit(size_t asize);
+static void *best_fit(size_t asize);
 
 static void add_free_block(void *bp);
 static void remove_free_block(void *ptr);
@@ -109,14 +110,14 @@ int mm_init(void)
 
 void *mm_malloc(size_t size)
 {
-    size_t asize = 8;
+    size_t asize = 16;
     size_t extendsize;
     char *bp;
 
     if (size == 0)
         return NULL;
 
-    while(asize < size + WSIZE){ // 요청받은 것보다 기본이 작으면 늘려줌
+    while(asize < size + DSIZE){ // 요청받은 것보다 기본이 작으면 늘려줌
         asize <<= 1;
     }
 
@@ -156,7 +157,7 @@ void *mm_realloc(void *ptr, size_t size)
     if (newptr == NULL)
         return NULL;
 
-    size_t copysize = GET_SIZE(HDRP(ptr)) - WSIZE; //- DSIZE;
+    size_t copysize = GET_SIZE(HDRP(ptr)) - DSIZE;
     if (size < copysize)
         copysize = size;
 
@@ -215,6 +216,21 @@ static void *coalesce(void *bp)
 }
 
 static void *find_fit(size_t asize) // first fit
+{
+    void *bp;
+    int class;
+
+    for (class = get_class(asize); class < BUDDY; class++){
+        for (bp = GET_ROOT(class); bp != NULL; bp = GET_SUCC(bp)){
+            if(GET_SIZE(HDRP(bp)) >= asize){
+                return bp;
+            }
+        }
+    }
+    return NULL;
+}
+
+static void *best_fit(size_t asize) // first fit
 {
     void *bp;
     int class;
