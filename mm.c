@@ -45,7 +45,7 @@ team_t team = {
 
 #define WSIZE 4
 #define DSIZE 8
-#define CHUNKSIZE (1<<12)
+#define CHUNKSIZE (1<<12)  // 1<<15
 #define BUDDY 20
 
 #define MAX(x, y) (x > y ? x : y)
@@ -109,14 +109,14 @@ int mm_init(void)
 
 void *mm_malloc(size_t size)
 {
-    size_t asize = 16;
+    size_t asize = 8;
     size_t extendsize;
     char *bp;
 
     if (size == 0)
         return NULL;
 
-    while(asize < size + DSIZE){ // 요청받은 것보다 기본이 작으면 늘려줌
+    while(asize < size + WSIZE){ // 요청받은 것보다 기본이 작으면 늘려줌
         asize <<= 1;
     }
 
@@ -156,7 +156,7 @@ void *mm_realloc(void *ptr, size_t size)
     if (newptr == NULL)
         return NULL;
 
-    size_t copysize = GET_SIZE(HDRP(ptr)) - DSIZE;
+    size_t copysize = GET_SIZE(HDRP(ptr)) - WSIZE; //- DSIZE;
     if (size < copysize)
         copysize = size;
 
@@ -184,7 +184,7 @@ static void *coalesce(void *bp)
     add_free_block(bp);
 
     size_t csize = GET_SIZE(HDRP(bp));
-    void *root = heap_listp + (BUDDY + 1) * WSIZE;
+    void *root = heap_listp + (BUDDY + 1) * WSIZE; // 버디 + 푸터 만큼
     void *left, *right;
 
     while (1) {
@@ -218,14 +218,22 @@ static void *find_fit(size_t asize) // first fit
 {
     void *bp;
     int class;
+    int best_size = CHUNKSIZE << 1;
+    void *best = NULL;
 
     for (class = get_class(asize); class < BUDDY; class++){
         for (bp = GET_ROOT(class); bp != NULL; bp = GET_SUCC(bp)){
-            if(GET_SIZE(HDRP(bp)) >= asize)
-                return bp;
+            if(GET_SIZE(HDRP(bp)) >= asize){
+                if (GET_SIZE(HDRP(bp)) == asize){
+                    return bp;
+                }
+                else if (GET_SIZE(HDRP(bp)) < best_size){
+                    best = bp;
+                }
+            }
         }
     }
-    return NULL;
+    return best;
 }
 
 static int get_class(size_t size){
