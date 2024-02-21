@@ -225,30 +225,6 @@ static void *coalesce(void *bp)
 /*
  * mm_realloc - Implemented simply in terms of mm_malloc and mm_free
  */
-// void *mm_realloc(void *ptr, size_t size)
-// {
-//     if (size <= 0){
-//         mm_free(ptr);
-//         return 0;
-//     }
-//     if (ptr == NULL){
-//         return mm_malloc(size);
-//     }
-   
-//    void *newptr;
-    
-//     newptr = mm_malloc(size);
-//     if (newptr == NULL)
-//         return NULL;
-
-//     size_t copysize = GET_SIZE(HDRP(ptr)) - DSIZE;
-//     if (size < copysize){
-//         copysize = size;
-//     }
-//     memcpy(newptr, ptr, copysize);
-//     mm_free(ptr);
-//     return newptr;
-// }
 void *mm_realloc(void *ptr, size_t size)
 {
     if (size <= 0){
@@ -259,33 +235,68 @@ void *mm_realloc(void *ptr, size_t size)
         return mm_malloc(size);
     }
    
-   size_t copysize = GET_SIZE(HDRP(ptr));
-   size_t newsize = size + DSIZE;
-   void *oldptr = ptr;
-   void *newptr;
+    void *newptr;
+    size_t originsize = GET_SIZE(HDRP(ptr));
+    size_t newsize = size + DSIZE;
     
-    if (newsize <= copysize){
-        return oldptr;
+    size_t addsize = originsize + GET_SIZE(HDRP(NEXT_BLKP(ptr)));
+    if (!GET_ALLOC(HDRP(NEXT_BLKP(ptr))) && (newsize <= addsize)){
+        PUT(HDRP(ptr), PACK(addsize, 1));
+        PUT(FTRP(ptr), PACK(addsize, 1));
+        return ptr;
     }
     else{
-        size_t addsize = copysize + GET_SIZE(HDRP(NEXT_BLKP(oldptr)));
-        if(!GET_ALLOC(HDRP(NEXT_BLKP(oldptr))) && (newsize <= addsize)){
-            PUT(HDRP(oldptr), PACK(addsize, 1));
-            PUT(FTRP(oldptr), PACK(addsize, 1));
-            return oldptr;
+        newptr = mm_malloc(size);
+        if (newptr == NULL)
+            return NULL;
+
+        size_t copysize = GET_SIZE(HDRP(ptr)) - DSIZE;
+        if (size < copysize) {
+            copysize = size;
         }
-        else{
-            newptr = mm_malloc(newsize);
-            if (newptr == NULL)
-                return NULL;
-            memcpy(newptr, oldptr, newsize);
-            mm_free(oldptr);
-            return newptr;
-        }
+        memcpy(newptr, ptr, copysize);
+        mm_free(ptr);
+        return newptr;
     }
-    
-    // if (size < copysize){
-    //     copysize = size;
-    // }
-    
 }
+
+// void *mm_realloc(void *ptr, size_t size)
+// {
+//     if (size <= 0){
+//         mm_free(ptr);
+//         return 0;
+//     }
+//     if (ptr == NULL){
+//         return mm_malloc(size);
+//     }
+   
+//    void *oldptr = ptr;
+//    void *newptr;
+//    size_t copysize = GET_SIZE(HDRP(oldptr));
+//    size_t newsize = size + DSIZE;
+    
+//     if (newsize <= copysize){
+//         return oldptr;
+//     }
+//     else{
+//         size_t addsize = copysize + GET_SIZE(HDRP(NEXT_BLKP(oldptr)));
+//         if(!GET_ALLOC(HDRP(NEXT_BLKP(oldptr))) && (newsize <= addsize)){
+//             PUT(HDRP(oldptr), PACK(addsize, 1));
+//             PUT(FTRP(oldptr), PACK(addsize, 1));
+//             return oldptr;
+//         }
+//         else{
+//             newptr = mm_malloc(newsize);
+//             if (newptr == NULL)
+//                 return NULL;
+//             memcpy(newptr, oldptr, newsize);
+//             mm_free(oldptr);
+//             return newptr;
+//         }
+//     }
+    
+//     // if (size < copysize){
+//     //     copysize = size;
+//     // }
+    
+// }
