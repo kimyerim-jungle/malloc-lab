@@ -48,9 +48,9 @@ team_t team = {
 #define DSIZE 8
 #define CHUNKSIZE (1<<12)
 
-#define MAX(x, y) ((x) > (y) ? (x) : (y))
+#define MAX(x, y) (x > y ? x : y)
 
-#define PACK(size, alloc) ((size) | (alloc))
+#define PACK(size, alloc) (size | alloc)
 
 #define GET(p)      (*(unsigned int *)(p))
 #define PUT(p, val) (*(unsigned int *)(p) = (val))
@@ -64,11 +64,8 @@ team_t team = {
 #define NEXT_BLKP(bp) ((char *)(bp) + GET_SIZE(((char *)(bp) - WSIZE)))
 #define PREV_BLKP(bp) ((char *)(bp) - GET_SIZE(((char *)(bp) - DSIZE)))
 
-#define NEXT_BPTR(bp) (*(char **)(bp))
-#define PREV_BPTR(bp) (*(char **)(bp + WSIZE))
-
-void *heap_listp;
-
+static void *heap_listp;
+static void *last_bp;
 static void *extend_heap(size_t words);
 static void *coalesce(void *bp);
 static void place(void *bp, size_t asize);
@@ -84,13 +81,13 @@ int mm_init(void)
         return -1;
     PUT(heap_listp, 0);
     PUT(heap_listp + (1*WSIZE), PACK(DSIZE, 1)); // header
-    // PUT(heap_listp + (2*WSIZE), NULL); // next ptr
-    // PUT(heap_listp + (3*WSIZE), NULL); // prev ptr
     PUT(heap_listp + (2*WSIZE), PACK(DSIZE, 1)); // footer
-
     PUT(heap_listp + (3*WSIZE), PACK(0, 1));
-    heap_listp += (2*WSIZE);
 
+    heap_listp += (2*WSIZE);
+    last_bp = heap_listp;
+
+    //if (extend_heap())
     if (extend_heap(CHUNKSIZE/WSIZE) == NULL)
         return -1;
 
@@ -101,13 +98,11 @@ static void *extend_heap(size_t words){
     char *bp;
     size_t size;
 
-    size = (words % 2) ? (words+1) * WSIZE : words * WSIZE;
+    size = (words % 2) ? (words + 1) * WSIZE : words * WSIZE;
     if ((long)(bp = mem_sbrk(size)) == -1)
         return NULL;
 
-    PUT(HDRP(bp), PACK(size , 0));
-    //PUT(HDRP(bp) + 1*WSIZE, NULL);
-    //PUT(HDRP(bp) + 2*WSIZE, NULL);
+    PUT(HDRP(bp), PACK(size, 0));
     PUT(FTRP(bp), PACK(size, 0));
     PUT(HDRP(NEXT_BLKP(bp)), PACK(0, 1));
 
@@ -173,6 +168,16 @@ static void *find_fit(size_t asize)
         }
     }
     return NULL;
+}
+
+static void *next_fit(size_t asize){
+    void *bp;
+
+    for (bp = last_bp; GET_SIZE(HDRP(bp)) > 0; bp = NEXT_BLKP(bp)) {
+        if (!GET_ALLOC(HDRP(bp)) && GET_SIZE(HDRP(bp)) >= asize) {
+            return bp;
+        }
+    }
 }
 
 /*
