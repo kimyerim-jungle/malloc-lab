@@ -1,13 +1,4 @@
 /*
- * mm-naive.c - The fastest, least memory-efficient malloc package.
- * 
- * In this naive approach, a block is allocated by simply incrementing
- * the brk pointer.  A block is pure payload. There are no headers or
- * footers.  Blocks are never coalesced or reused. Realloc is
- * implemented directly using mm_malloc and mm_free.
- *
- * NOTE TO STUDENTS: Replace this header comment with your own header
- * comment that gives a high level description of your solution.
  */
 #include <stdio.h>
 #include <stdlib.h>
@@ -59,7 +50,6 @@ team_t team = {
 #define GET_ALLOC(p) (GET(p) & 0x1)
 
 #define HDRP(bp)    ((char *)(bp) - WSIZE) // 헤더,포인터2개
-//#define FTRP(bp)    ((char *)(bp) + GET_SIZE(HDRP(bp)) - DSIZE) // 헤더,푸터,포인터2개  
 
 #define NEXT_BLKP(bp) ((char *)(bp) + GET_SIZE(((char *)(bp) - WSIZE)))
 #define PREV_BLKP(bp) ((char *)(bp) - GET_SIZE(((char *)(bp) - DSIZE)))
@@ -139,7 +129,6 @@ void mm_free(void *bp)
     size_t size = GET_SIZE(HDRP(bp));
 
     PUT(HDRP(bp), PACK(size, 0));
-    //PUT(FTRP(bp), PACK(size, 0));
     coalesce(bp);
 }
 
@@ -174,7 +163,6 @@ static void *extend_heap(size_t words){
         return NULL;
 
     PUT(HDRP(bp), PACK(words * WSIZE, 0));
-    //PUT(FTRP(bp), PACK(words * WSIZE, 0));
     PUT(HDRP(NEXT_BLKP(bp)), PACK(0, 1)); // 에필로그 블록
 
     return coalesce(bp);    
@@ -230,7 +218,7 @@ static void *find_fit(size_t asize) // first fit
     return NULL;
 }
 
-static void *best_fit(size_t asize) // first fit
+static void *best_fit(size_t asize) // best fit
 {
     void *bp;
     int class;
@@ -289,16 +277,15 @@ static void remove_free_block(void *ptr)
     if (GET_SUCC(ptr) != NULL)
         GET_PRED(GET_SUCC(ptr)) = GET_PRED(ptr);
 
-    //printf("alloc %d\n", class);
 }
 
 static void add_free_block(void *bp)
 {
     int class = get_class(GET_SIZE(HDRP(bp)));
+
     GET_SUCC(bp) = GET_ROOT(class);
     if (GET_ROOT(class) != NULL)
         GET_PRED(GET_ROOT(class)) = bp;
     GET_ROOT(class) = bp;
 
-    //printf("free %d\n", class);
 }
