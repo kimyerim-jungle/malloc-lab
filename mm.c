@@ -64,8 +64,6 @@ team_t team = {
 #define NEXT_BLKP(bp) ((char *)(bp) + GET_SIZE(((char *)(bp) - WSIZE)))
 #define PREV_BLKP(bp) ((char *)(bp) - GET_SIZE(((char *)(bp) - DSIZE)))
 
-#define NEXT_BPTR(bp) (*(char **)(bp))
-#define PREV_BPTR(bp) (*(char **)(bp + WSIZE))
 
 void *heap_listp;
 
@@ -84,8 +82,6 @@ int mm_init(void)
         return -1;
     PUT(heap_listp, 0);
     PUT(heap_listp + (1*WSIZE), PACK(DSIZE, 1)); // header
-    // PUT(heap_listp + (2*WSIZE), NULL); // next ptr
-    // PUT(heap_listp + (3*WSIZE), NULL); // prev ptr
     PUT(heap_listp + (2*WSIZE), PACK(DSIZE, 1)); // footer
 
     PUT(heap_listp + (3*WSIZE), PACK(0, 1));
@@ -106,8 +102,6 @@ static void *extend_heap(size_t words){
         return NULL;
 
     PUT(HDRP(bp), PACK(size , 0));
-    //PUT(HDRP(bp) + 1*WSIZE, NULL);
-    //PUT(HDRP(bp) + 2*WSIZE, NULL);
     PUT(FTRP(bp), PACK(size, 0));
     PUT(HDRP(NEXT_BLKP(bp)), PACK(0, 1));
 
@@ -228,7 +222,11 @@ void *mm_realloc(void *ptr, size_t size)
     newptr = mm_malloc(size);
     if (newptr == NULL)
         return NULL;
-    memcpy(newptr, oldptr, size);
+    size_t copysize = GET_SIZE(HDRP(ptr)) - DSIZE;
+    if (size < copysize) {
+        copysize = size;
+    }
+    memcpy(newptr, oldptr, copysize);
     mm_free(oldptr);
     return newptr;
 }
